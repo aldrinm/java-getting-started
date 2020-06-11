@@ -16,8 +16,25 @@
 
 package com.example;
 
+import static javax.measure.unit.SI.KILOGRAM;
+
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import javax.measure.quantity.Mass;
+import javax.sql.DataSource;
+import org.jscience.physics.amount.Amount;
+import org.jscience.physics.model.RelativisticModel;
+import org.neo4j.driver.Driver;
+import org.neo4j.driver.Record;
+import org.neo4j.driver.Result;
+import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -25,14 +42,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
-
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.ArrayList;
-import java.util.Map;
 
 @Controller
 @SpringBootApplication
@@ -51,6 +60,21 @@ public class Main {
   @RequestMapping("/")
   String index() {
     return "index";
+  }
+
+  @Autowired
+  Driver driver;
+
+  @RequestMapping("/neo4j")
+  String neo4j(Map<String, Object> model) {
+    System.out.println("driver = " + driver);
+    Session session = driver.session();
+    System.out.println("session = " + session);
+    Result result = session.run("Match (n) return count(n)");
+    List<Record> records = result.list();
+    model.put("records", records.toString());
+
+    return "neo4j";
   }
 
   @RequestMapping("/db")
@@ -84,5 +108,24 @@ public class Main {
       return new HikariDataSource(config);
     }
   }
+
+  @RequestMapping("/hello")
+  String hello(Map<String, Object> model) {
+    RelativisticModel.select();
+    String energy = System.getenv().get("ENERGY");
+    if (energy == null) {
+      energy = "12 GeV";
+    }
+    Amount<Mass> m = Amount.valueOf(energy).to(KILOGRAM);
+    model.put("science", "E=mc^2: " + energy + " = " + m.toString());
+
+
+    String gb = System.getenv().get("GRAPHENEDB_BOLT_USER");
+    model.put("gb", gb);
+
+
+    return "hello";
+  }
+
 
 }
